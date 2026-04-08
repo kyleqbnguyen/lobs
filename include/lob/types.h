@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <deque>
-#include <map>
 #include <vector>
 
 using OrderId = std::uint64_t;
@@ -40,5 +39,3 @@ struct LevelInfo {
   Quantity quantity{0};
   std::deque<OrderId> orderIds;
 };
-
-using Book = std::map<Price, LevelInfo>;
