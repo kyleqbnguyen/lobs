@@ -18,6 +18,9 @@ protected:
   }
 };
 
+// addOrder returns empty std::vector if no trades match
+// addOrder returns std::vector of trades
+
 // Query Behavior
 TEST_F(OrderBookTest, EmptyBook) {
   EXPECT_EQ(orderBook.bestBid(), std::nullopt);
@@ -60,4 +63,18 @@ TEST_F(OrderBookTest, SingleAsk) {
   EXPECT_EQ(orderBook.getQuantityAt(Side::Bid, 100), 0);
 
   EXPECT_EQ(orderBook.getOrderBookSize(), 1);
+}
+
+TEST_F(OrderBookTest, BestBidIsLargest) {
+  addTestOrder(Side::Bid, OrderType::GTC, 50, 10);
+  addTestOrder(Side::Bid, OrderType::GTC, 100, 10);
+
+  EXPECT_EQ(orderBook.bestBid(), 100);
+}
+
+TEST_F(OrderBookTest, BestAskIsSmallest) {
+  addTestOrder(Side::Ask, OrderType::GTC, 100, 10);
+  addTestOrder(Side::Ask, OrderType::GTC, 50, 10);
+
+  EXPECT_EQ(orderBook.bestAsk(), 50);
 }

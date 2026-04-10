@@ -18,13 +18,13 @@ Trades OrderBook::addOrder(Order order) {
 std::optional<Price> OrderBook::bestBid() {
   if (bids_.empty()) { return std::nullopt; }
 
-  return bids_.begin()->first;
+  return bids_.rbegin()->first;
 }
 
 std::optional<Price> OrderBook::bestAsk() {
   if (asks_.empty()) { return std::nullopt; }
 
-  return asks_.rbegin()->first;
+  return asks_.begin()->first;
 }
 
 std::size_t OrderBook::getBookDepth(Side side) {
