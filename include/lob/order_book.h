@@ -11,9 +11,9 @@ class OrderBook {
 public:
   Trades addOrder(Order order);
 
-  bool cancelOrder(OrderId orderId);
-
-  bool modifyOrder(OrderId orderId, Quantity quantity);
+  // bool cancelOrder(OrderId orderId);
+  //
+  // bool modifyOrder(OrderId orderId, Quantity quantity);
 
   std::optional<Price> bestBid();
 
@@ -28,7 +28,7 @@ public:
 private:
   void matchOrder(Order& order, Trades& trades);
 
-  bool canFillFully(const Order& order);
+  // bool canFillFully(const Order& order);
 
   std::map<Price, LevelInfo> bids_;
   std::map<Price, LevelInfo> asks_;
