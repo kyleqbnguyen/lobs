@@ -35,7 +35,6 @@ struct Trade {
 using Trades = std::vector<Trade>;
 
 struct LevelInfo {
-  Price price;
   Quantity quantity{0};
   std::deque<OrderId> orderIds;
 };

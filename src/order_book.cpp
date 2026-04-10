@@ -48,7 +48,6 @@ void OrderBook::matchOrder(Order& order, Trades& trades) {
   auto& book{(order.side == Side::Bid) ? bids_ : asks_};
   auto& level{book[order.price]};
 
-  level.price = order.price;
   level.quantity += order.quantity;
 
   level.orderIds.push_back(order.id);
