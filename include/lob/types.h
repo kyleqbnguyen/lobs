@@ -10,7 +10,9 @@ using Quantity = std::uint32_t;
 
 enum class Side : std::uint8_t { Bid, Ask };
 
-enum class OrderType : std::uint8_t {
+enum class OrderType : std::uint8_t { Limit, Market };
+
+enum class TimeInForce : std::uint8_t {
   GTC, // Good-Till-Cancel
   IOC, // Immediate-Or-Cancel
   FOK, // Fill-Or-Kill
@@ -21,6 +23,7 @@ struct Order {
   OrderId id;
   Side side;
   OrderType type;
+  TimeInForce timeInForce;
   Price price;
   Quantity quantity;
 };

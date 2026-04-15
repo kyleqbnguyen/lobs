@@ -5,7 +5,8 @@
 TEST_F(OrderBookTest, AddOrder_ReturnsNoTrades_ForRestingInsert) {
   const auto trades = orderBook.addOrder({.id = id++,
                                           .side = Side::Bid,
-                                          .type = OrderType::GTC,
+                                          .type = OrderType::Limit,
+                                          .timeInForce = TimeInForce::GTC,
                                           .price = 10000,
                                           .quantity = 10});
 
@@ -14,7 +15,7 @@ TEST_F(OrderBookTest, AddOrder_ReturnsNoTrades_ForRestingInsert) {
 
 TEST_F(OrderBookTest,
        AddingOppositeSideLiquidity_DoesNotAffectExistingSideState) {
-  addTestOrder(Side::Bid, OrderType::GTC, 10000, 10);
+  addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000, 10);
 
   EXPECT_EQ(orderBook.bestBid(), 10000);
   EXPECT_EQ(orderBook.bestAsk(), std::nullopt);
@@ -24,7 +25,7 @@ TEST_F(OrderBookTest,
   EXPECT_EQ(orderBook.getQuantityAt(Side::Ask, 10000), 0);
   EXPECT_EQ(orderBook.getOrderBookSize(), 1);
 
-  addTestOrder(Side::Ask, OrderType::GTC, 15000, 7);
+  addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 15000, 7);
 
   EXPECT_EQ(orderBook.bestBid(), 10000);
   EXPECT_EQ(orderBook.bestAsk(), 15000);

@@ -10,10 +10,12 @@ protected:
   OrderBook orderBook{};
   OrderId id{1};
 
-  void addTestOrder(Side side, OrderType type, Price price, Quantity quantity) {
+  void addTestOrder(Side side, OrderType type, TimeInForce timeInForce,
+                    Price price, Quantity quantity) {
     orderBook.addOrder({.id = id++,
                         .side = side,
                         .type = type,
+                        .timeInForce = timeInForce,
                         .price = price,
                         .quantity = quantity});
   }
