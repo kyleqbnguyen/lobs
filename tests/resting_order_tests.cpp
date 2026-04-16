@@ -2,7 +2,7 @@
 
 #include <optional>
 
-TEST_F(OrderBookTest, AddOrder_ReturnsNoTrades_ForRestingInsert) {
+TEST_F(OrderBookTest, addOrder_shouldReturnNoTrades_whenOrderRests) {
   const auto trades = orderBook.addOrder({.id = id++,
                                           .side = Side::Bid,
                                           .type = OrderType::Limit,
@@ -13,7 +13,8 @@ TEST_F(OrderBookTest, AddOrder_ReturnsNoTrades_ForRestingInsert) {
   EXPECT_TRUE(trades.empty());
 }
 
-TEST_F(OrderBookTest, OppositeSideOrder_DoesNotAffectExistingSideState) {
+TEST_F(OrderBookTest,
+       addOrder_shouldPreserveExistingSideState_whenOppositeSideOrderRests) {
   addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000, 10);
 
   EXPECT_EQ(orderBook.bestBid(), 10000);
@@ -37,7 +38,7 @@ TEST_F(OrderBookTest, OppositeSideOrder_DoesNotAffectExistingSideState) {
   EXPECT_EQ(orderBook.getOrderBookSize(), 2);
 }
 
-TEST_F(OrderBookTest, NonCrossingBidOrder_RestsWithoutTrades) {
+TEST_F(OrderBookTest, addOrder_shouldRestBidWithoutTrades_whenBidDoesNotCross) {
   orderBook.addOrder({.id = 100,
                       .side = Side::Ask,
                       .type = OrderType::Limit,
@@ -60,7 +61,7 @@ TEST_F(OrderBookTest, NonCrossingBidOrder_RestsWithoutTrades) {
   EXPECT_EQ(orderBook.getOrderBookSize(), 2);
 }
 
-TEST_F(OrderBookTest, NonCrossingAskOrder_RestsWithoutTrades) {
+TEST_F(OrderBookTest, addOrder_shouldRestAskWithoutTrades_whenAskDoesNotCross) {
   orderBook.addOrder({.id = 100,
                       .side = Side::Bid,
                       .type = OrderType::Limit,

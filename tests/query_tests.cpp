@@ -2,7 +2,7 @@
 
 #include <optional>
 
-TEST_F(OrderBookTest, EmptyBook_ReportsNoLiquidity) {
+TEST_F(OrderBookTest, queries_shouldReportNoLiquidity_whenBookIsEmpty) {
   EXPECT_EQ(orderBook.bestBid(), std::nullopt);
   EXPECT_EQ(orderBook.bestAsk(), std::nullopt);
 
@@ -15,7 +15,8 @@ TEST_F(OrderBookTest, EmptyBook_ReportsNoLiquidity) {
   EXPECT_EQ(orderBook.getOrderBookSize(), 0);
 }
 
-TEST_F(OrderBookTest, SingleBid_OnlyReportsLiquidityOnBidSide) {
+TEST_F(OrderBookTest,
+       queries_shouldReportLiquidityOnlyOnBidSide_whenBookHasSingleBid) {
   addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000, 10);
 
   EXPECT_EQ(orderBook.bestBid(), 10000);
@@ -30,36 +31,38 @@ TEST_F(OrderBookTest, SingleBid_OnlyReportsLiquidityOnBidSide) {
   EXPECT_EQ(orderBook.getOrderBookSize(), 1);
 }
 
-TEST_F(OrderBookTest, SingleAsk_OnlyReportsLiquidityOnAskSide) {
-  addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 10000, 10);
-
-  EXPECT_EQ(orderBook.bestAsk(), 10000);
-  EXPECT_EQ(orderBook.bestBid(), std::nullopt);
-
-  EXPECT_EQ(orderBook.getBookDepth(Side::Ask), 1);
-  EXPECT_EQ(orderBook.getBookDepth(Side::Bid), 0);
-
-  EXPECT_EQ(orderBook.getQuantityAt(Side::Ask, 10000), 10);
-  EXPECT_EQ(orderBook.getQuantityAt(Side::Bid, 10000), 0);
-
-  EXPECT_EQ(orderBook.getOrderBookSize(), 1);
-}
-
-TEST_F(OrderBookTest, BestBid_Returns_HighestRestingBid) {
+TEST_F(OrderBookTest,
+       bestBid_shouldReturnHighestRestingBid_whenBookHasMultipleBids) {
   addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 5000, 10);
   addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000, 10);
 
   EXPECT_EQ(orderBook.bestBid(), 10000);
 }
 
-TEST_F(OrderBookTest, BestAsk_Returns_LowestRestingAsk) {
+TEST_F(OrderBookTest, bestBid_shouldRemainHighest_whenLowerBidAdded) {
+  addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000, 10);
+  addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 5000, 10);
+
+  EXPECT_EQ(orderBook.bestBid(), 10000);
+}
+
+TEST_F(OrderBookTest,
+       bestAsk_shouldReturnLowestRestingAsk_whenBookHasMultipleAsks) {
   addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 10000, 10);
   addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 5000, 10);
 
   EXPECT_EQ(orderBook.bestAsk(), 5000);
 }
 
-TEST_F(OrderBookTest, BidDepth_Unaffected_WhenOrdersAddedAtSamePriceLevel) {
+TEST_F(OrderBookTest, bestAsk_shouldRemainLowest_whenHigherAskAdded) {
+  addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 5000, 10);
+  addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 10000, 10);
+
+  EXPECT_EQ(orderBook.bestAsk(), 5000);
+}
+
+TEST_F(OrderBookTest,
+       getBookDepth_shouldNotIncrease_whenBidAddedAtSamePriceLevel) {
   addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000, 10);
   EXPECT_EQ(orderBook.getBookDepth(Side::Bid), 1);
 
@@ -67,7 +70,8 @@ TEST_F(OrderBookTest, BidDepth_Unaffected_WhenOrdersAddedAtSamePriceLevel) {
   EXPECT_EQ(orderBook.getBookDepth(Side::Bid), 1);
 }
 
-TEST_F(OrderBookTest, AskDepth_Unaffected_WhenOrdersAddedAtSamePriceLevel) {
+TEST_F(OrderBookTest,
+       getBookDepth_shouldNotIncrease_whenAskAddedAtSamePriceLevel) {
   addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 10000, 10);
   EXPECT_EQ(orderBook.getBookDepth(Side::Ask), 1);
 
@@ -75,7 +79,7 @@ TEST_F(OrderBookTest, AskDepth_Unaffected_WhenOrdersAddedAtSamePriceLevel) {
   EXPECT_EQ(orderBook.getBookDepth(Side::Ask), 1);
 }
 
-TEST_F(OrderBookTest, BidDepth_Increases_WhenOrderAddedOnNewLevel) {
+TEST_F(OrderBookTest, getBookDepth_shouldIncrease_whenBidAddedOnNewLevel) {
   EXPECT_EQ(orderBook.getBookDepth(Side::Bid), 0);
 
   addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000, 10);
@@ -85,7 +89,7 @@ TEST_F(OrderBookTest, BidDepth_Increases_WhenOrderAddedOnNewLevel) {
   EXPECT_EQ(orderBook.getBookDepth(Side::Bid), 2);
 }
 
-TEST_F(OrderBookTest, AskDepth_Increases_WhenOrderAddedOnNewLevel) {
+TEST_F(OrderBookTest, getBookDepth_shouldIncrease_whenAskAddedOnNewLevel) {
   EXPECT_EQ(orderBook.getBookDepth(Side::Ask), 0);
 
   addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 10000, 10);
@@ -95,7 +99,18 @@ TEST_F(OrderBookTest, AskDepth_Increases_WhenOrderAddedOnNewLevel) {
   EXPECT_EQ(orderBook.getBookDepth(Side::Ask), 2);
 }
 
-TEST_F(OrderBookTest, QuantityAt_ReturnsSumOfBidQuantities_AtSamePriceLevel) {
+TEST_F(OrderBookTest,
+       getBookDepth_shouldRemainIndependent_whenBothSidesHaveLiquidity) {
+  addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000, 10);
+  addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 10100, 5);
+
+  EXPECT_EQ(orderBook.getBookDepth(Side::Bid), 1);
+  EXPECT_EQ(orderBook.getBookDepth(Side::Ask), 1);
+}
+
+TEST_F(
+    OrderBookTest,
+    getQuantityAt_shouldReturnSumOfBidQuantities_whenLevelHasMultipleOrders) {
   constexpr Quantity firstOrderQuantity{10};
   addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000,
                firstOrderQuantity);
@@ -108,7 +123,9 @@ TEST_F(OrderBookTest, QuantityAt_ReturnsSumOfBidQuantities_AtSamePriceLevel) {
   EXPECT_EQ(orderBook.getQuantityAt(Side::Bid, 10000), sum);
 }
 
-TEST_F(OrderBookTest, QuantityAt_ReturnsSumOfAskQuantities_AtSamePriceLevel) {
+TEST_F(
+    OrderBookTest,
+    getQuantityAt_shouldReturnSumOfAskQuantities_whenLevelHasMultipleOrders) {
   constexpr Quantity firstOrderQuantity{10};
   addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 10000,
                firstOrderQuantity);
@@ -121,7 +138,9 @@ TEST_F(OrderBookTest, QuantityAt_ReturnsSumOfAskQuantities_AtSamePriceLevel) {
   EXPECT_EQ(orderBook.getQuantityAt(Side::Ask, 10000), sum);
 }
 
-TEST_F(OrderBookTest, QuantityAt_IsIsolatedPerBidLevel) {
+TEST_F(
+    OrderBookTest,
+    getQuantityAt_shouldRemainIsolatedPerBidLevel_whenBookHasMultipleLevels) {
   addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000, 10);
   addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 5000, 5);
 
@@ -129,7 +148,9 @@ TEST_F(OrderBookTest, QuantityAt_IsIsolatedPerBidLevel) {
   EXPECT_EQ(orderBook.getQuantityAt(Side::Bid, 5000), 5);
 }
 
-TEST_F(OrderBookTest, QuantityAt_IsIsolatedPerAskLevel) {
+TEST_F(
+    OrderBookTest,
+    getQuantityAt_shouldRemainIsolatedPerAskLevel_whenBookHasMultipleLevels) {
   addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 10000, 10);
   addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 5000, 5);
 
@@ -137,19 +158,29 @@ TEST_F(OrderBookTest, QuantityAt_IsIsolatedPerAskLevel) {
   EXPECT_EQ(orderBook.getQuantityAt(Side::Ask, 5000), 5);
 }
 
-TEST_F(OrderBookTest, QuantityAt_ReturnsZero_ForEmptyLevelInNonEmptyBidBook) {
+TEST_F(OrderBookTest,
+       getQuantityAt_shouldReturnZero_whenBidLevelIsEmptyInNonEmptyBook) {
   addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000, 10);
 
   EXPECT_EQ(orderBook.getQuantityAt(Side::Bid, 5000), 0);
 }
 
-TEST_F(OrderBookTest, QuantityAt_ReturnsZero_ForEmptyLevelInNonEmptyAskBook) {
+TEST_F(OrderBookTest,
+       getQuantityAt_shouldReturnZero_whenAskLevelIsEmptyInNonEmptyBook) {
   addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 10000, 10);
 
   EXPECT_EQ(orderBook.getQuantityAt(Side::Ask, 5000), 0);
 }
 
-TEST_F(OrderBookTest, OrderBookSize_CountsMultipleBidsAtSameLevel) {
+TEST_F(OrderBookTest,
+       getQuantityAt_shouldReturnZero_whenLevelExistsOnOppositeSide) {
+  addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000, 10);
+
+  EXPECT_EQ(orderBook.getQuantityAt(Side::Ask, 10000), 0);
+}
+
+TEST_F(OrderBookTest,
+       getOrderBookSize_shouldCountMultipleOrders_whenTheySharePriceLevel) {
   EXPECT_EQ(orderBook.getOrderBookSize(), 0);
 
   addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000, 10);
@@ -159,37 +190,8 @@ TEST_F(OrderBookTest, OrderBookSize_CountsMultipleBidsAtSameLevel) {
   EXPECT_EQ(orderBook.getOrderBookSize(), 2);
 }
 
-TEST_F(OrderBookTest, OrderBookSize_CountsMultipleAsksAtSameLevel) {
-  EXPECT_EQ(orderBook.getOrderBookSize(), 0);
-
-  addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 10000, 10);
-  EXPECT_EQ(orderBook.getOrderBookSize(), 1);
-
-  addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 10000, 5);
-  EXPECT_EQ(orderBook.getOrderBookSize(), 2);
-}
-
-TEST_F(OrderBookTest, OrderBookSize_IncrementsPerBidPriceLevel) {
-  EXPECT_EQ(orderBook.getOrderBookSize(), 0);
-
-  addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000, 10);
-  EXPECT_EQ(orderBook.getOrderBookSize(), 1);
-
-  addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 5000, 5);
-  EXPECT_EQ(orderBook.getOrderBookSize(), 2);
-}
-
-TEST_F(OrderBookTest, OrderBookSize_IncrementsPerAskPriceLevel) {
-  EXPECT_EQ(orderBook.getOrderBookSize(), 0);
-
-  addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 10000, 10);
-  EXPECT_EQ(orderBook.getOrderBookSize(), 1);
-
-  addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 5000, 5);
-  EXPECT_EQ(orderBook.getOrderBookSize(), 2);
-}
-
-TEST_F(OrderBookTest, OrderBookSize_CountsOrdersAcrossBothSides) {
+TEST_F(OrderBookTest,
+       getOrderBookSize_shouldCountOrders_whenTheyRestOnBothSides) {
   EXPECT_EQ(orderBook.getOrderBookSize(), 0);
 
   addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 5000, 5);
@@ -197,4 +199,24 @@ TEST_F(OrderBookTest, OrderBookSize_CountsOrdersAcrossBothSides) {
 
   addTestOrder(Side::Ask, OrderType::Limit, TimeInForce::GTC, 10000, 10);
   EXPECT_EQ(orderBook.getOrderBookSize(), 2);
+}
+
+TEST_F(
+    OrderBookTest,
+    queries_shouldUpdateAfterTradeRemovesBestLevels_whenBookTransitionsToEmpty) {
+  addTestOrder(Side::Bid, OrderType::Limit, TimeInForce::GTC, 10000, 5);
+
+  const auto trades = orderBook.addOrder({.id = id++,
+                                          .side = Side::Ask,
+                                          .type = OrderType::Limit,
+                                          .timeInForce = TimeInForce::GTC,
+                                          .price = 10000,
+                                          .quantity = 5});
+
+  ASSERT_EQ(trades.size(), 1U);
+  EXPECT_EQ(orderBook.bestBid(), std::nullopt);
+  EXPECT_EQ(orderBook.bestAsk(), std::nullopt);
+  EXPECT_EQ(orderBook.getBookDepth(Side::Bid), 0);
+  EXPECT_EQ(orderBook.getBookDepth(Side::Ask), 0);
+  EXPECT_EQ(orderBook.getOrderBookSize(), 0);
 }
