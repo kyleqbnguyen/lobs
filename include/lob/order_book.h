@@ -32,6 +32,8 @@ private:
 
   bool canFillFully(const Order& order);
 
+  bool canCross(const Order& order, Price bestResting);
+
   std::map<Price, LevelInfo> bids_;
   std::map<Price, LevelInfo> asks_;
 

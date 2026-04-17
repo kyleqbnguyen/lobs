@@ -12,7 +12,9 @@ Trades OrderBook::addOrder(Order order) {
   switch (order.timeInForce) {
   case TimeInForce::GTC:
     matchOrder(order, trades);
-    if (order.quantity > 0) { insertResting(order); }
+    if (order.quantity > 0 && order.type == OrderType::Limit) {
+      insertResting(order);
+    }
     break;
 
   case TimeInForce::IOC:
@@ -20,14 +22,14 @@ Trades OrderBook::addOrder(Order order) {
     break;
 
   case TimeInForce::FOK:
-    if (canFillFully(order)) {
-      matchOrder(order, trades);
-    }
+    if (canFillFully(order)) { matchOrder(order, trades); }
     break;
 
   case TimeInForce::DTC:
     matchOrder(order, trades);
-    if (order.quantity > 0) { insertResting(order); }
+    if (order.quantity > 0 && order.type == OrderType::Limit) {
+      insertResting(order);
+    }
     break;
   }
 
@@ -71,11 +73,11 @@ void OrderBook::matchOrder(Order& order, Trades& trades) {
   auto& oppBook{(order.side == Side::Bid) ? asks_ : bids_};
 
   while (order.quantity != 0 && !oppBook.empty()) {
-    if (order.side == Side::Bid && order.price < bestAsk()) { break; }
-    if (order.side == Side::Ask && order.price > bestBid()) { break; }
-
     auto bestIt{(order.side == Side::Bid) ? oppBook.begin()
                                           : std::prev(oppBook.end())};
+
+    if (!canCross(order, bestIt->first)) { break; }
+
     auto& level{bestIt->second};
     auto& queue{level.orderIds};
 
@@ -95,7 +97,6 @@ void OrderBook::matchOrder(Order& order, Trades& trades) {
         queue.pop_front();
         orders_.erase(restingIt);
       }
-
     }
 
     if (level.quantity == 0) { oppBook.erase(bestIt); }
@@ -115,19 +116,32 @@ void OrderBook::insertResting(const Order& order) {
 
 bool OrderBook::canFillFully(const Order& order) {
   auto& oppBook{(order.side == Side::Bid) ? asks_ : bids_};
-  auto curIt{(order.side == Side::Bid) ? oppBook.begin()
-                                       : std::prev(oppBook.end())};
 
-  auto stopCondition{(order.side == Side::Bid) ? std::prev(oppBook.end())
-                                               : oppBook.begin()};
+  if (oppBook.empty()) { return false; }
 
   Quantity remaining{order.quantity};
 
-  for (auto it {curIt}; curIt != stopCondition && remaining != 0;) {
-    remaining -= std::min(remaining, curIt->second.quantity);
-
-    it = (order.side == Side::Bid) ? ++it : --it;
+  if (order.side == Side::Bid) {
+    for (auto it{oppBook.begin()}; it != oppBook.end() && remaining != 0;
+         ++it) {
+      if (!canCross(order, it->first)) { break; }
+      remaining -= std::min(remaining, it->second.quantity);
+    }
+  } else {
+    for (auto it{oppBook.rbegin()}; it != oppBook.rend() && remaining != 0;
+         ++it) {
+      if (!canCross(order, it->first)) { break; }
+      remaining -= std::min(remaining, it->second.quantity);
+    }
   }
 
   return remaining == 0;
+}
+
+bool OrderBook::canCross(const Order& order, Price bestResting) {
+  if (order.type == OrderType::Market) { return true; }
+
+  if (order.side == Side::Bid) { return order.price >= bestResting; }
+
+  return order.price <= bestResting;
 }
