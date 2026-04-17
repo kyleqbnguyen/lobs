@@ -36,8 +36,33 @@ Trades OrderBook::addOrder(Order order) {
   return trades;
 }
 
-// bool OrderBook::cancelOrder(OrderId orderId) {}
+bool OrderBook::cancelOrder(OrderId orderId) {
+  auto orderIt{orders_.find(orderId)};
+  if (orderIt == orders_.end()) { return false; }
+
+  const auto& orderInfo{orderIt->second};
+  auto& book{(orderInfo.side == Side::Bid) ? bids_ : asks_};
+
+  auto levelIt{book.find(orderInfo.price)};
+  if (levelIt == book.end()) { return false; }
+
+  auto& levelInfo{levelIt->second};
+  auto& levelQueue{levelInfo.orderIds};
+
+  auto dqIt{std::find(levelQueue.begin(), levelQueue.end(), orderId)};
+  if (dqIt == levelQueue.end()) { return false; }
+
+  levelQueue.erase(dqIt);
+  levelInfo.quantity -= orderInfo.quantity;
+
+  if (levelQueue.empty()) { book.erase(levelIt); }
+
+  orders_.erase(orderIt);
+  return true;
+}
+
 // bool OrderBook::modifyOrder(OrderId orderId, Quantity quantity) {}
+
 std::optional<Price> OrderBook::bestBid() const {
   if (bids_.empty()) { return std::nullopt; }
 

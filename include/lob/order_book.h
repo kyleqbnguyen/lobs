@@ -11,9 +11,9 @@ class OrderBook {
 public:
   Trades addOrder(Order order);
 
-  // bool cancelOrder(OrderId orderId);
-  //
-  // bool modifyOrder(OrderId orderId, Quantity quantity);
+  bool cancelOrder(OrderId orderId);
+
+  bool modifyOrder(OrderId orderId, Quantity quantity);
 
   std::optional<Price> bestBid() const;
 
