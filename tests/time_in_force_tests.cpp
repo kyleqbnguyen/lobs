@@ -137,6 +137,239 @@ TEST_F(OrderBookTest, addOrder_shouldCancelFokWithoutTrading_whenBookIsEmpty) {
   EXPECT_EQ(orderBook.getOrderBookSize(), 0);
 }
 
+TEST_F(OrderBookTest,
+       addOrder_shouldCancelIocAskRemainder_whenAskPartiallyMatches) {
+  orderBook.addOrder({.id = 100,
+                      .side = Side::Bid,
+                      .type = OrderType::Limit,
+                      .timeInForce = TimeInForce::GTC,
+                      .price = 10000,
+                      .quantity = 10});
+
+  const auto trades = orderBook.addOrder({.id = 200,
+                                          .side = Side::Ask,
+                                          .type = OrderType::Limit,
+                                          .timeInForce = TimeInForce::IOC,
+                                          .price = 10000,
+                                          .quantity = 15});
+
+  ASSERT_EQ(trades.size(), 1U);
+  EXPECT_EQ(trades[0].aggressorId, 200);
+  EXPECT_EQ(trades[0].quantity, 10);
+  EXPECT_EQ(orderBook.bestBid(), std::nullopt);
+  EXPECT_EQ(orderBook.bestAsk(), std::nullopt);
+  EXPECT_EQ(orderBook.getOrderBookSize(), 0);
+}
+
+TEST_F(OrderBookTest,
+       addOrder_shouldCancelIocAskWithoutTrade_whenAskOrderDoesNotCross) {
+  orderBook.addOrder({.id = 100,
+                      .side = Side::Bid,
+                      .type = OrderType::Limit,
+                      .timeInForce = TimeInForce::GTC,
+                      .price = 9900,
+                      .quantity = 10});
+
+  const auto trades = orderBook.addOrder({.id = 200,
+                                          .side = Side::Ask,
+                                          .type = OrderType::Limit,
+                                          .timeInForce = TimeInForce::IOC,
+                                          .price = 10000,
+                                          .quantity = 5});
+
+  EXPECT_TRUE(trades.empty());
+  EXPECT_EQ(orderBook.bestBid(), 9900);
+  EXPECT_EQ(orderBook.bestAsk(), std::nullopt);
+  EXPECT_EQ(orderBook.getQuantityAt(Side::Bid, 9900), 10);
+  EXPECT_EQ(orderBook.getOrderBookSize(), 1);
+}
+
+TEST_F(OrderBookTest,
+       addOrder_shouldSweepAndCancelRemainder_whenIocAskCrossesMultipleLevels) {
+  orderBook.addOrder({.id = 100,
+                      .side = Side::Bid,
+                      .type = OrderType::Limit,
+                      .timeInForce = TimeInForce::GTC,
+                      .price = 10100,
+                      .quantity = 5});
+  orderBook.addOrder({.id = 101,
+                      .side = Side::Bid,
+                      .type = OrderType::Limit,
+                      .timeInForce = TimeInForce::GTC,
+                      .price = 10000,
+                      .quantity = 4});
+
+  const auto trades = orderBook.addOrder({.id = 200,
+                                          .side = Side::Ask,
+                                          .type = OrderType::Limit,
+                                          .timeInForce = TimeInForce::IOC,
+                                          .price = 10000,
+                                          .quantity = 12});
+
+  ASSERT_EQ(trades.size(), 2U);
+  EXPECT_EQ(trades[0].aggressorId, 200);
+  EXPECT_EQ(trades[0].quantity, 5);
+  EXPECT_EQ(trades[1].aggressorId, 200);
+  EXPECT_EQ(trades[1].quantity, 4);
+  EXPECT_EQ(orderBook.bestBid(), std::nullopt);
+  EXPECT_EQ(orderBook.bestAsk(), std::nullopt);
+  EXPECT_EQ(orderBook.getOrderBookSize(), 0);
+}
+
+TEST_F(OrderBookTest,
+       addOrder_shouldExecuteFokAsk_whenSufficientBidLiquidityExists) {
+  orderBook.addOrder({.id = 100,
+                      .side = Side::Bid,
+                      .type = OrderType::Limit,
+                      .timeInForce = TimeInForce::GTC,
+                      .price = 10000,
+                      .quantity = 10});
+
+  const auto trades = orderBook.addOrder({.id = 200,
+                                          .side = Side::Ask,
+                                          .type = OrderType::Limit,
+                                          .timeInForce = TimeInForce::FOK,
+                                          .price = 10000,
+                                          .quantity = 10});
+
+  ASSERT_EQ(trades.size(), 1U);
+  EXPECT_EQ(trades[0].aggressorId, 200);
+  EXPECT_EQ(trades[0].passiveId, 100);
+  EXPECT_EQ(trades[0].quantity, 10);
+  EXPECT_EQ(orderBook.getOrderBookSize(), 0);
+}
+
+TEST_F(OrderBookTest,
+       addOrder_shouldCancelFokAsk_whenBidLiquidityIsInsufficient) {
+  orderBook.addOrder({.id = 100,
+                      .side = Side::Bid,
+                      .type = OrderType::Limit,
+                      .timeInForce = TimeInForce::GTC,
+                      .price = 10000,
+                      .quantity = 5});
+
+  const auto trades = orderBook.addOrder({.id = 200,
+                                          .side = Side::Ask,
+                                          .type = OrderType::Limit,
+                                          .timeInForce = TimeInForce::FOK,
+                                          .price = 10000,
+                                          .quantity = 10});
+
+  EXPECT_TRUE(trades.empty());
+  EXPECT_EQ(orderBook.bestBid(), 10000);
+  EXPECT_EQ(orderBook.bestAsk(), std::nullopt);
+  EXPECT_EQ(orderBook.getQuantityAt(Side::Bid, 10000), 5);
+  EXPECT_EQ(orderBook.getOrderBookSize(), 1);
+}
+
+TEST_F(OrderBookTest,
+       addOrder_shouldCancelFokAskWithoutTrading_whenBookIsEmpty) {
+  const auto trades = orderBook.addOrder({.id = 200,
+                                          .side = Side::Ask,
+                                          .type = OrderType::Limit,
+                                          .timeInForce = TimeInForce::FOK,
+                                          .price = 10000,
+                                          .quantity = 10});
+
+  EXPECT_TRUE(trades.empty());
+  EXPECT_EQ(orderBook.bestBid(), std::nullopt);
+  EXPECT_EQ(orderBook.bestAsk(), std::nullopt);
+  EXPECT_EQ(orderBook.getOrderBookSize(), 0);
+}
+
+TEST_F(OrderBookTest, addOrder_shouldRestDtcBid_whenBidDoesNotCross) {
+  orderBook.addOrder({.id = 100,
+                      .side = Side::Ask,
+                      .type = OrderType::Limit,
+                      .timeInForce = TimeInForce::GTC,
+                      .price = 10100,
+                      .quantity = 10});
+
+  const auto trades = orderBook.addOrder({.id = 200,
+                                          .side = Side::Bid,
+                                          .type = OrderType::Limit,
+                                          .timeInForce = TimeInForce::DTC,
+                                          .price = 10000,
+                                          .quantity = 5});
+
+  EXPECT_TRUE(trades.empty());
+  EXPECT_EQ(orderBook.bestBid(), 10000);
+  EXPECT_EQ(orderBook.bestAsk(), 10100);
+  EXPECT_EQ(orderBook.getQuantityAt(Side::Bid, 10000), 5);
+  EXPECT_EQ(orderBook.getOrderBookSize(), 2);
+}
+
+TEST_F(OrderBookTest, addOrder_shouldRestDtcAsk_whenAskDoesNotCross) {
+  orderBook.addOrder({.id = 100,
+                      .side = Side::Bid,
+                      .type = OrderType::Limit,
+                      .timeInForce = TimeInForce::GTC,
+                      .price = 9900,
+                      .quantity = 10});
+
+  const auto trades = orderBook.addOrder({.id = 200,
+                                          .side = Side::Ask,
+                                          .type = OrderType::Limit,
+                                          .timeInForce = TimeInForce::DTC,
+                                          .price = 10000,
+                                          .quantity = 5});
+
+  EXPECT_TRUE(trades.empty());
+  EXPECT_EQ(orderBook.bestBid(), 9900);
+  EXPECT_EQ(orderBook.bestAsk(), 10000);
+  EXPECT_EQ(orderBook.getQuantityAt(Side::Ask, 10000), 5);
+  EXPECT_EQ(orderBook.getOrderBookSize(), 2);
+}
+
+TEST_F(OrderBookTest, addOrder_shouldMatchDtcBid_whenBidCrossesBook) {
+  orderBook.addOrder({.id = 100,
+                      .side = Side::Ask,
+                      .type = OrderType::Limit,
+                      .timeInForce = TimeInForce::GTC,
+                      .price = 10000,
+                      .quantity = 10});
+
+  const auto trades = orderBook.addOrder({.id = 200,
+                                          .side = Side::Bid,
+                                          .type = OrderType::Limit,
+                                          .timeInForce = TimeInForce::DTC,
+                                          .price = 10000,
+                                          .quantity = 10});
+
+  ASSERT_EQ(trades.size(), 1U);
+  EXPECT_EQ(trades[0].aggressorId, 200);
+  EXPECT_EQ(trades[0].passiveId, 100);
+  EXPECT_EQ(trades[0].price, 10000);
+  EXPECT_EQ(trades[0].quantity, 10);
+  EXPECT_EQ(orderBook.bestBid(), std::nullopt);
+  EXPECT_EQ(orderBook.bestAsk(), std::nullopt);
+  EXPECT_EQ(orderBook.getOrderBookSize(), 0);
+}
+
+TEST_F(OrderBookTest, addOrder_shouldRestDtcRemainder_whenPartialMatchOccurs) {
+  orderBook.addOrder({.id = 100,
+                      .side = Side::Ask,
+                      .type = OrderType::Limit,
+                      .timeInForce = TimeInForce::GTC,
+                      .price = 10000,
+                      .quantity = 5});
+
+  const auto trades = orderBook.addOrder({.id = 200,
+                                          .side = Side::Bid,
+                                          .type = OrderType::Limit,
+                                          .timeInForce = TimeInForce::DTC,
+                                          .price = 10000,
+                                          .quantity = 10});
+
+  ASSERT_EQ(trades.size(), 1U);
+  EXPECT_EQ(trades[0].aggressorId, 200);
+  EXPECT_EQ(trades[0].quantity, 5);
+  EXPECT_EQ(orderBook.bestBid(), 10000);
+  EXPECT_EQ(orderBook.bestAsk(), std::nullopt);
+  EXPECT_EQ(orderBook.getQuantityAt(Side::Bid, 10000), 5);
+  EXPECT_EQ(orderBook.getOrderBookSize(), 1);
+}
+
 TEST_F(
     OrderBookTest,
     addOrder_shouldCancelFokWithoutTrading_whenLiquidityExistsOnlyBeyondLimitPrice) {
