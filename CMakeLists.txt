@@ -26,6 +26,8 @@ target_include_directories(
 
 target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -Wpedantic)
 
+add_subdirectory(benchmark)
+
 if(LOB_BUILD_TESTS)
   enable_testing()
   add_subdirectory(tests)
