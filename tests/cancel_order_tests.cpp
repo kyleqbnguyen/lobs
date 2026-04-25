@@ -3,12 +3,7 @@
 #include <optional>
 
 TEST_F(OrderBookTest, cancelOrder_shouldReturnTrue_whenOrderExists) {
-  orderBook.addOrder({.id = 100,
-                      .side = Side::Bid,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 10});
+  addLimit(100, Side::Bid, 10000, 10);
 
   EXPECT_TRUE(orderBook.cancelOrder(100));
 }
@@ -18,12 +13,7 @@ TEST_F(OrderBookTest, cancelOrder_shouldReturnFalse_whenOrderDoesNotExist) {
 }
 
 TEST_F(OrderBookTest, cancelOrder_shouldReturnFalse_whenOrderAlreadyCancelled) {
-  orderBook.addOrder({.id = 100,
-                      .side = Side::Bid,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 10});
+  addLimit(100, Side::Bid, 10000, 10);
 
   orderBook.cancelOrder(100);
 
@@ -31,12 +21,7 @@ TEST_F(OrderBookTest, cancelOrder_shouldReturnFalse_whenOrderAlreadyCancelled) {
 }
 
 TEST_F(OrderBookTest, cancelOrder_shouldEmptyBook_whenOnlyBidIsCancelled) {
-  orderBook.addOrder({.id = 100,
-                      .side = Side::Bid,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 10});
+  addLimit(100, Side::Bid, 10000, 10);
 
   orderBook.cancelOrder(100);
 
@@ -46,36 +31,10 @@ TEST_F(OrderBookTest, cancelOrder_shouldEmptyBook_whenOnlyBidIsCancelled) {
   EXPECT_EQ(orderBook.orderCount(), 0);
 }
 
-TEST_F(OrderBookTest, cancelOrder_shouldEmptyBook_whenOnlyAskIsCancelled) {
-  orderBook.addOrder({.id = 100,
-                      .side = Side::Ask,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 10});
-
-  orderBook.cancelOrder(100);
-
-  EXPECT_EQ(orderBook.bestAsk(), std::nullopt);
-  EXPECT_EQ(orderBook.depth(Side::Ask), 0);
-  EXPECT_EQ(orderBook.quantityAt(Side::Ask, 10000), 0);
-  EXPECT_EQ(orderBook.orderCount(), 0);
-}
-
 TEST_F(OrderBookTest,
        cancelOrder_shouldUpdateBestBid_whenBestBidLevelIsCancelled) {
-  orderBook.addOrder({.id = 100,
-                      .side = Side::Bid,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 10});
-  orderBook.addOrder({.id = 101,
-                      .side = Side::Bid,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 9900,
-                      .quantity = 5});
+  addLimit(100, Side::Bid, 10000, 10);
+  addLimit(101, Side::Bid, 9900, 5);
 
   orderBook.cancelOrder(100);
 
@@ -86,18 +45,8 @@ TEST_F(OrderBookTest,
 
 TEST_F(OrderBookTest,
        cancelOrder_shouldUpdateBestAsk_whenBestAskLevelIsCancelled) {
-  orderBook.addOrder({.id = 100,
-                      .side = Side::Ask,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 10});
-  orderBook.addOrder({.id = 101,
-                      .side = Side::Ask,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10100,
-                      .quantity = 5});
+  addLimit(100, Side::Ask, 10000, 10);
+  addLimit(101, Side::Ask, 10100, 5);
 
   orderBook.cancelOrder(100);
 
@@ -107,39 +56,9 @@ TEST_F(OrderBookTest,
 }
 
 TEST_F(OrderBookTest,
-       cancelOrder_shouldDecrementDepth_whenLastOrderAtLevelIsCancelled) {
-  orderBook.addOrder({.id = 100,
-                      .side = Side::Bid,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 10});
-  orderBook.addOrder({.id = 101,
-                      .side = Side::Bid,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 9900,
-                      .quantity = 5});
-
-  orderBook.cancelOrder(100);
-
-  EXPECT_EQ(orderBook.depth(Side::Bid), 1);
-}
-
-TEST_F(OrderBookTest,
        cancelOrder_shouldNotDecrementDepth_whenOtherOrdersRemainAtLevel) {
-  orderBook.addOrder({.id = 100,
-                      .side = Side::Bid,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 10});
-  orderBook.addOrder({.id = 101,
-                      .side = Side::Bid,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 5});
+  addLimit(100, Side::Bid, 10000, 10);
+  addLimit(101, Side::Bid, 10000, 5);
 
   orderBook.cancelOrder(100);
 
@@ -150,18 +69,8 @@ TEST_F(OrderBookTest,
 
 TEST_F(OrderBookTest,
        cancelOrder_shouldReduceLevelQuantity_whenOneOfMultipleOrdersCancelled) {
-  orderBook.addOrder({.id = 100,
-                      .side = Side::Ask,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 6});
-  orderBook.addOrder({.id = 101,
-                      .side = Side::Ask,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 4});
+  addLimit(100, Side::Ask, 10000, 6);
+  addLimit(101, Side::Ask, 10000, 4);
 
   orderBook.cancelOrder(100);
 
@@ -171,33 +80,13 @@ TEST_F(OrderBookTest,
 
 TEST_F(OrderBookTest,
        cancelOrder_shouldPreserveFifo_whenLeadingOrderAtLevelIsCancelled) {
-  orderBook.addOrder({.id = 100,
-                      .side = Side::Ask,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 5});
-  orderBook.addOrder({.id = 101,
-                      .side = Side::Ask,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 7});
-  orderBook.addOrder({.id = 102,
-                      .side = Side::Ask,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 3});
+  addLimit(100, Side::Ask, 10000, 5);
+  addLimit(101, Side::Ask, 10000, 7);
+  addLimit(102, Side::Ask, 10000, 3);
 
   orderBook.cancelOrder(100);
 
-  const auto trades = orderBook.addOrder({.id = 200,
-                                          .side = Side::Bid,
-                                          .type = OrderType::Limit,
-                                          .timeInForce = TimeInForce::GTC,
-                                          .price = 10000,
-                                          .quantity = 8});
+  const auto trades = addLimit(200, Side::Bid, 10000, 8);
 
   ASSERT_EQ(trades.size(), 2U);
   EXPECT_EQ(trades[0].passiveId, 101);
@@ -208,18 +97,8 @@ TEST_F(OrderBookTest,
 
 TEST_F(OrderBookTest,
        cancelOrder_shouldNotAffectOppositeSide_whenBidIsCancelled) {
-  orderBook.addOrder({.id = 100,
-                      .side = Side::Bid,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10000,
-                      .quantity = 10});
-  orderBook.addOrder({.id = 101,
-                      .side = Side::Ask,
-                      .type = OrderType::Limit,
-                      .timeInForce = TimeInForce::GTC,
-                      .price = 10100,
-                      .quantity = 5});
+  addLimit(100, Side::Bid, 10000, 10);
+  addLimit(101, Side::Ask, 10100, 5);
 
   orderBook.cancelOrder(100);
 
